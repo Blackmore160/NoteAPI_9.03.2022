@@ -48,7 +48,7 @@ class TestUsers(TestCase):
         self.assertEqual(data["username"], user_data["username"])
 
     def test_user_not_found_by_id(self):
-        response = self.client.get('/users/2')
+        response = self.client.get('/users/5')
         self.assertEqual(response.status_code, 404)
 
     def test_users_get(self):
@@ -89,7 +89,23 @@ class TestUsers(TestCase):
         """
         Редактирование пользователя
         """
-        pass
+        user_data = {
+            "username": "TestUser",
+            "password": "TestUser"
+        }
+        user = UserModel(**user_data)
+        user.save()
+        edit_user_data = {
+            "password": "new password",
+            "is_staff": True
+        }
+        self.client.put(f'/users/{user.id}',
+                        data=json.dumps(edit_user_data),
+                        content_type='application/json')
+        edited_user = UserModel.query.get(user.id)
+
+        self.assertTrue(edited_user.verify_password(edit_user_data["password"]))
+        self.assertEqual(edit_user_data["is_staff"], edited_user.is_staff)
 
     def test_delete_user(self):
         """
@@ -212,7 +228,20 @@ class TestNotes(TestCase):
         """
         Получение заметки с несуществующим id
         """
-        pass
+        alex_notes_data = {
+                "text": 'Alex note 1',
+            }
+        user_alex_data = {
+            "username": 'alex',
+            'password': 'alex'
+        }
+        user_alex = UserModel(**user_alex_data)
+        user_alex.save()
+        note = NoteModel(author_id=user_alex.id, **alex_notes_data)
+        note.save()
+
+        res = self.client.get('/notes/2', headers=self.headers)
+        self.assertEqual(res.status_code, 404)
 
 
 
@@ -250,6 +279,27 @@ class TestNotes(TestCase):
         """
         Редактирование заметки
         """
+        note_data = {"text": "Text_old"}
+        note = NoteModel(author_id=self.user.id, **note_data)
+        note.save()
+
+        edit_note_data = {
+            "text": "New_text",
+            "private": False
+        }
+        res = self.client.put(f'/notes/{note.id}',
+                              data=json.dumps(edit_note_data),
+                              content_type='application/json',
+                              headers=self.headers)
+
+        edited_note = NoteModel.query.get(note.id)
+
+        # res = self.client.get(f'/notes/{note.id}', headers=self.headers)
+        # edit_data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(edited_note.private)
+        self.assertEqual(edit_note_data["text"], edited_note.text)
 
     def test_delete_note(self):
         """
