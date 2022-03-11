@@ -54,23 +54,29 @@ class UserResource(MethodResource):
         return user, 200
 
     @doc(security=[{"basicAuth": []}])
-    @doc(summary='Edit user')
-    # @auth.login_required(role="admin")
-    @auth.login_required
+    @doc(summary='Edit user by id')
+    @auth.login_required(role="admin")
+    # @auth.login_required
     @marshal_with(UserSchema, code=200)
-    @use_kwargs({'username': fields.Str(required=True)})
+    @use_kwargs({'username': fields.Str(required=True), 'role': fields.Str(required=False)})
     def put(self, user_id, **kwargs):
         # parser = reqparse.RequestParser()
         # parser.add_argument("username", required=True)
         # user_data = parser.parse_args()
         user = UserModel.query.get(user_id)
-        user.username = kwargs["username"]
+        if not user:
+            abort(404, error=f'User with id={user_id} not found')
+        user.username = kwargs["username"] or user.username
+        user.role = kwargs['role'] or user.role
         user.save()
         return user, 200
 
+    @auth.login_required(role="admin")
+    @doc(summary='Delete user by id')
+    @doc(responses={401: {"description": "Not authorization"}})
+    @doc(responses={404: {"description": "Not found"}})
+    @marshal_with(UserSchema, code=204)
     @doc(security=[{"basicAuth": []}])
-    @doc(summary='User delete')
-    @auth.login_required
     def delete(self, user_id):
         # author = g.user
         user_for_delete = UserModel.query.get(user_id)
@@ -78,7 +84,7 @@ class UserResource(MethodResource):
             abort(404, error=f"user {user_id} not found")
 
         user_for_delete.delete()
-        return {}, 204
+        return user_for_delete, 204
         # raise NotImplemented  # не реализовано!
 
 

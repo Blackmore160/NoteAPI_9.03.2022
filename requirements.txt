@@ -9,4 +9,4 @@ passlib
 
 gunicorn
 psycopg2-binary
-ipython==8.1.0
+ipython==8.1.1

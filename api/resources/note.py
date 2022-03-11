@@ -8,6 +8,9 @@ from flask_apispec import marshal_with, use_kwargs, doc
 @doc(tags=['Notes'])
 class NoteResource(MethodResource):
     @auth.login_required
+    @doc(summary="Get note by id", security=[{"basicAuth": []}])
+    @doc(responses={404: {"description": "Not found"}})
+    @marshal_with(NoteSchema, code=200)
     def get(self, note_id):
         """
         Пользователь может получить ТОЛЬКО свою заметку
@@ -20,33 +23,38 @@ class NoteResource(MethodResource):
             abort(403)
         return note_schema.dump(note), 200
 
-    @doc(security=[{"basicAuth": []}])
     @auth.login_required
-    def put(self, note_id):
+    @doc(summary="Edit note by id", security=[{"basicAuth": []}])
+    @doc(responses={404: {"description": "Not found"}})
+    @doc(responses={403: {"description": "Forbidden"}})
+    @use_kwargs(NoteRequestSchema, location='json')
+    @marshal_with(NoteSchema, code=200)
+    def put(self, note_id, **kwargs):
         """
         Пользователь может редактировать ТОЛЬКО свои заметки
         """
         author = g.user
-        parser = reqparse.RequestParser()
-        parser.add_argument("text", required=True)
-        parser.add_argument("private", type=bool)
-        note_data = parser.parse_args()
+        # parser = reqparse.RequestParser()
+        # parser.add_argument("text", required=True)
+        # parser.add_argument("private", type=bool)
+        # note_data = parser.parse_args()
         note = NoteModel.query.get(note_id)
         if not note:
             abort(404, error=f"note {note_id} not found")
         if note.author != author:
             abort(403, error=f"Forbidden")
-        note.text = note_data["text"]
+        # note.text = note_data["text"]
 
-        if note_data.get("private") is not None:
-            note.private = note_data.get('private')
-
+        note.text = kwargs['text'] or note.text
+        note.private = kwargs['private'] or note.private
         note.save()
-        return note_schema.dump(note), 200
+        return note, 200
 
-    @doc(security=[{"basicAuth": []}])
-    @doc(summary='Delete note')
     @auth.login_required
+    @doc(summary='Delete note by id', security=[{"basicAuth": []}])
+    @doc(responses={401: {"description": "Not authorization"}})
+    @doc(responses={404: {"description": "Not found"}})
+    @marshal_with(NoteSchema, code=200)
     def delete(self, note_id):
         """
         Пользователь может удалять ТОЛЬКО свои заметки
@@ -56,9 +64,9 @@ class NoteResource(MethodResource):
         if not note:
             abort(404, error=f"note {note_id} not found")
         if author != note.author:
-            abort(403)
+            abort(403, error='Forbidden')
         note.delete()
-        return {}, 204
+        return note, 204
 
 
 @doc(tags=['Notes'])
