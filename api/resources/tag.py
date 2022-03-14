@@ -17,9 +17,13 @@ class NoteSetTagsResource(MethodResource):
         note = NoteModel.query.get(note_id)
         if not note:
             abort(404, error=f"note {note_id} not found")
-        print("note kwargs = ", kwargs)
-        ...
-        ...
+        # print("note kwargs = ", kwargs)
+        for tag_id in kwargs['tags']:
+            tag = TagModel.query.get(tag_id)
+            if not tag:
+                abort(404, error=f'Tag with id={tag_id} not found')
+            note.tags.append(tag)
+        note.save()
         return note, 200
 
 
@@ -30,7 +34,7 @@ class TagResource(MethodResource):
     def get(self, tag_id):
         tag = TagModel.query.get(tag_id)
         if not tag:
-            abort(404, error=f"User with id={tag_id} not found")
+            abort(404, error=f"Tag with id={tag_id} not found")
         return tag, 200
 
     @doc(security=[{"basicAuth": []}])
@@ -81,4 +85,6 @@ class TagListResource(MethodResource):
     def post(self, **kwargs):
         tag = TagModel(**kwargs)
         tag.save()
+        if tag.id is None:
+            abort(400, error=f'Tag with name={tag.name} already exist')
         return tag, 201
