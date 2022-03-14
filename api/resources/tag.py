@@ -8,25 +8,6 @@ from flask_apispec import marshal_with, use_kwargs, doc
 from webargs import fields
 
 
-@doc(tags=['Notes'])
-class NoteSetTagsResource(MethodResource):
-    @doc(summary="Set tags to Note")
-    @use_kwargs({"tags": fields.List(fields.Int())}, location=('json'))
-    @marshal_with(NoteSchema)
-    def put(self, note_id, **kwargs):
-        note = NoteModel.query.get(note_id)
-        if not note:
-            abort(404, error=f"note {note_id} not found")
-        # print("note kwargs = ", kwargs)
-        for tag_id in kwargs['tags']:
-            tag = TagModel.query.get(tag_id)
-            if not tag:
-                abort(404, error=f'Tag with id={tag_id} not found')
-            note.tags.append(tag)
-        note.save()
-        return note, 200
-
-
 @doc(tags=['Tags'])
 class TagResource(MethodResource):
     @marshal_with(TagSchema, code=200)
