@@ -14,7 +14,7 @@ class UserModel(db.Model, MixinModel):
     is_staff = db.Column(db.Boolean(), default=False, server_default="false", nullable=False)
     role = db.Column(db.String(32), nullable=False, server_default="simple_user", default="simple_user")
 
-    def __init__(self, username, password, role='simple_user'):
+    def __init__(self, username, password, role='simple_user', is_staff=False):
         self.username = username
         self.role = role
         self.hash_password(password)

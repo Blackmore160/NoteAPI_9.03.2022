@@ -1,4 +1,5 @@
 from api import auth, abort, g, Resource, reqparse
+from helpers import shortcuts
 from api.models.note import NoteModel
 from api.schemas.note import note_schema, notes_schema, NoteSchema, NoteRequestSchema
 from flask_apispec.views import MethodResource
@@ -18,12 +19,14 @@ class NoteResource(MethodResource):
         Пользователь может получить ТОЛЬКО свою заметку
         """
         author = g.user
-        note = NoteModel.query.get(note_id)
-        if not note:
-            abort(404, error=f"Note with id={note_id} not found")
+        note = shortcuts.get_or_404(NoteModel, note_id)
+
+        # note = NoteModel.query.get(note_id)
+        # if not note:
+        #     abort(404, error=f"Note with id={note_id} not found")
         if author != note.author:
             abort(403)
-        return note_schema.dump(note), 200
+        return note, 200
 
     @auth.login_required
     @doc(summary="Edit note by id", security=[{"basicAuth": []}])
@@ -54,21 +57,30 @@ class NoteResource(MethodResource):
 
     @auth.login_required
     @doc(summary='Delete note by id', security=[{"basicAuth": []}])
-    @doc(responses={401: {"description": "Not authorization"}})
+    @doc(responses={401: {"description": "Unauthorized"}})
+    @doc(responses={403: {"description": "Forbidden"}})
     @doc(responses={404: {"description": "Not found"}})
+    @doc(responses={204: {"description": "Deleted"}})
     @marshal_with(NoteSchema, code=200)
     def delete(self, note_id):
         """
         Пользователь может удалять ТОЛЬКО свои заметки
         """
+        # author = g.user
+        # note = NoteModel.query.get(note_id)
+        # if not note:
+        #     abort(404, error=f"note {note_id} not found")
+        # if author != note.author:
+        #     abort(403, error='Forbidden')
+        # note.delete()
+
         author = g.user
-        note = NoteModel.query.get(note_id)
-        if not note:
-            abort(404, error=f"note {note_id} not found")
-        if author != note.author:
-            abort(403, error='Forbidden')
+        note = shortcuts.get_or_404(NoteModel, note_id)
+        if note.author != author:
+            abort(403)
         note.delete()
-        return note, 204
+
+        return "", 204
 
 
 @doc(tags=['Notes'])
@@ -80,7 +92,7 @@ class NotesListResource(MethodResource):
     def get(self):
         auth_user = g.user
 
-        notes = NoteModel.query.all()
+        notes = NoteModel.query.filter((NoteModel.author.has(id=auth_user.id)) | (NoteModel.private == False))
         return notes, 200
 
     @doc(security=[{"basicAuth": []}])
@@ -117,4 +129,23 @@ class NoteSetTagsResource(MethodResource):
                 abort(404, error=f'Tag with id={tag_id} not found')
             note.tags.append(tag)
         note.save()
+        return note, 200
+
+
+# GET: /notes/filter?tags=[tag-1, tag-2, ...]
+@doc(tags=['Notes'])
+class NotesFilterResource(MethodResource):
+    @doc(summary="Get note by filter")
+    @use_kwargs({"tags": fields.List(fields.Int())}, location='query')
+    @marshal_with(NoteSchema(many=True), code=200)
+    def get(self, **kwargs):
+        notes = NoteModel.query.join(NoteModel.tags).filter(TagModel.id.in_(kwargs['tags'])).all()
+        return notes
+
+
+class NoteArchive(MethodResource):
+    @doc(summary="Restore note from archive")
+    def delete(self, note_id):
+        note = shortcuts.get_or_404(NoteModel, note_id)
+        note.restore()
         return note, 200

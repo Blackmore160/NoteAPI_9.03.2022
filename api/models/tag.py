@@ -1,10 +1,12 @@
 from api import db
 # from sqlalchemy.exc import IntegrityError
+from api.models.user import UserModel
 from api.models.class_additional import MixinModel
 
 class TagModel(db.Model, MixinModel):
     __tablename__ = 'tag'
     id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey(UserModel.id))
     name = db.Column(db.String(255), unique=True, nullable=False)
 
     # def save(self):

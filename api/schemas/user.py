@@ -11,7 +11,10 @@ class UserSchema(ma.SQLAlchemySchema):
     class Meta:
         model = UserModel
         fields = ('id', 'username', "is_staff", "role")
-
+    _links = ma.Hyperlinks({
+        'self': ma.URLFor('userresource', values=dict(user_id="<id>")),
+        'collection': ma.URLFor('userslistresource')
+    })
 
 #       schema        SqlAlchemy
 # json ------>  dict ----------> object

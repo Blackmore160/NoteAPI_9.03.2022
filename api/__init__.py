@@ -41,6 +41,8 @@ ma = Marshmallow(app)
 auth = HTTPBasicAuth()
 docs = FlaskApiSpec(app)
 
+with app.app_context():
+   from commands import *
 
 @auth.verify_password
 def verify_password(username_or_token, password):

@@ -2,6 +2,7 @@ from api import db
 from api.models.user import UserModel
 from api.models.tag import TagModel
 # from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import expression
 from api.models.class_additional import MixinModel
 
 tags = db.Table('tags',
@@ -16,6 +17,15 @@ class NoteModel(db.Model, MixinModel):
     text = db.Column(db.String(255), unique=False, nullable=False)
     private = db.Column(db.Boolean(), default=True, nullable=False)
     tags = db.relationship(TagModel, secondary=tags, lazy='subquery', backref=db.backref('notes', lazy=True))
+    archive = db.Column(db.Boolean(), nullable=False, server_default=expression.false(), default=False)
+
+    def delete(self):
+        self.archive = True
+        self.save()
+
+    def restore(self):
+        self.archive = False
+        self.save()
 
     # def save(self):
     #     try:
